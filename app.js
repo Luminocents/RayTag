@@ -1,4 +1,5 @@
 const express = require('express');
+const { time } = require('node:console');
 const { createServer } = require('node:http');
 const { join } = require('node:http');
 
@@ -38,7 +39,7 @@ let users = {};
 // map
 const MAP_SIZE = 32;
 const MAP_SCALE = 128;
-const MAP_SPEED = (MAP_SCALE / 2) / 10;
+const MAP_SPEED = (MAP_SCALE / 2) / 100;
 
 // initialization
 io.on('connection', (socket) => {
@@ -161,10 +162,17 @@ let captureInfo = {
     playerY: Math.floor(MAP_SIZE / 2) * MAP_SCALE + MAP_SCALE / 2,
 };
 
+var lastUpdate = Date.now();
+
 function step() {
+    var now = Date.now();
+    var dt = now - lastUpdate;
+    lastUpdate = now;
+
     let tempUserList = {};
 
     for (var i in users) {
+        
         let user = users[i];
 
         // player
@@ -177,12 +185,12 @@ function step() {
         var playerMoveAngle = user.playerMoveAngle;
 
         // update player position
-        var playerOffsetX = Math.sin(playerAngle) * MAP_SPEED;
-        var playerOffsetY = Math.cos(playerAngle) * MAP_SPEED;
+        var playerOffsetX = Math.sin(playerAngle) * MAP_SPEED * dt;
+        var playerOffsetY = Math.cos(playerAngle) * MAP_SPEED * dt;
         var mapTargetX = Math.floor(playerY / MAP_SCALE) * MAP_SIZE + Math.floor((playerX + playerOffsetX * playerMoveX * 5) / MAP_SCALE);
         var mapTargetY = Math.floor((playerY + playerOffsetY * playerMoveY * 5) / MAP_SCALE) * MAP_SIZE + Math.floor(playerX / MAP_SCALE);
 
-        if (playerMoveAngle) playerAngle += 0.01 * playerMoveAngle;
+        if (playerMoveAngle) playerAngle += 0.005 * MAP_SPEED * playerMoveAngle * dt;
 
         if (playerMoveX || playerMoveY) {
             let moveVectorLength = Math.sqrt(playerMoveX * playerMoveX + playerMoveY * playerMoveY);
@@ -193,8 +201,8 @@ function step() {
             if (map[mapTargetY] == 0) playerY += playerOffsetY * normalizedMoveY;
         }
         if (playerStrafe) {
-            let strafeOffsetX = Math.sin(playerAngle - Math.PI / 2) * playerStrafe * 4; // Increase strafe speed by 4x
-            let strafeOffsetY = Math.cos(playerAngle - Math.PI / 2) * playerStrafe * 4; // Increase strafe speed by 4x
+            let strafeOffsetX = Math.sin(playerAngle - Math.PI / 2) * playerStrafe * MAP_SPEED * dt;
+            let strafeOffsetY = Math.cos(playerAngle - Math.PI / 2) * playerStrafe * MAP_SPEED * dt;
             let strafeTargetX = Math.floor((playerY + strafeOffsetY) / MAP_SCALE) * MAP_SIZE + Math.floor((playerX + strafeOffsetX) / MAP_SCALE);
             let strafeTargetY = Math.floor((playerY + strafeOffsetY) / MAP_SCALE) * MAP_SIZE + Math.floor(playerX / MAP_SCALE);
 
@@ -210,19 +218,6 @@ function step() {
         user.playerX = playerX;
         user.playerY = playerY;
         user.playerAngle = playerAngle;
-
-        // console.log(
-        //     'canvasWidth: ' + user.canvasWidth,
-        //     'playerX: ' + playerX,
-        //     'playerY: ' + playerY,
-        //     'playerAngle: ' + playerAngle,
-        //     'mapTargetX: ' + mapTargetX,
-        //     'mapTargetY: ' + mapTargetY,
-        //     'mapOffsetX: ' + mapOffsetX,
-        //     'mapOffsetY: ' + mapOffsetY,
-        //     'playerMapX: ' + playerMapX,
-        //     'playerMapY: ' + playerMapY,
-        // );
 
         // Check if capture position is on top of a wall (value 1 in the map)
         if (map[Math.floor(captureInfo.playerY / MAP_SCALE) * MAP_SIZE + Math.floor(captureInfo.playerX / MAP_SCALE)] === 1) {
@@ -263,7 +258,7 @@ function step() {
                 if (otherDistance < 50) {
                     if (playerMoveX) user.playerX -= playerOffsetX * playerMoveX;
                     if (playerMoveY) user.playerY -= playerOffsetY * playerMoveY;
-                    if (playerMoveAngle) user.playerAngle -= 0.06 * playerMoveAngle;
+                    if (playerMoveAngle) user.playerAngle -= 0.06 * playerMoveAngle * dt;
                 }
             }
         }
@@ -291,7 +286,6 @@ function step() {
         // send the player's position to the client
         user.playerSocket.emit('update', { users: tempUserList });
     }
-
 }
 
 server.listen(port, () => {

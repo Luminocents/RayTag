@@ -19,19 +19,6 @@
 </head>
 <script src="/socket.io/socket.io.js"></script>
 <script>
-
-    // load funny images
-
-    const FUNNY = [];
-
-    for (var filename = 1; filename < 22; filename++) {
-        var img = new Image();
-        img.src = "funnyImages/jerma" + filename + ".png";
-        FUNNY.push(img);
-    }
-
-    var yourImage = FUNNY[Math.floor(Math.random() * FUNNY.length)];
-
     const socket = io();
 
     let users = [];
